@@ -48,7 +48,7 @@ class FinancialGoalController extends ApiController
         try {
             $financialGoal = $this->repository->store($request);
 
-            return $this->ok(new FinancialGoalResource($financialGoal), __('financialgoals::messages.financial-goals.store'), __('financialgoal::messages.financial-goals.store', ['name' => $financialGoal->name]));
+            return $this->ok(new FinancialGoalResource($financialGoal), __('financialgoal::messages.financial-goals.store', ['name' => $financialGoal->name]));
         } catch (\Exception $e) {
             return $this->fail($e->getMessage(), $e, $e->getCode());
         }
