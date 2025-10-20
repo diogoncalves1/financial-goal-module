@@ -1,0 +1,8 @@
+{
+    "Accounts": true, 
+    "Currency": true,
+    "FinancialGoal": true,
+    "Permission": true,
+    "SharedRoles": true,
+    "User": true
+}
