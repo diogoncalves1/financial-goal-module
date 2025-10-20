@@ -8,10 +8,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Modules\FinancialGoal\DataTables\FinancialGoalDataTable;
 use Modules\FinancialGoal\Http\Requests\FinancialGoalRequest;
-use Modules\FinancialGoal\Http\Resources\ErrorResponseResource;
-use Modules\FinancialGoal\Http\Resources\FinancialGoalCollection;
 use Modules\FinancialGoal\Http\Resources\FinancialGoalResource;
-use Modules\FinancialGoal\Http\Resources\SuccessResponseResource;
 use Modules\FinancialGoal\Repositories\FinancialGoalRepository;
 
 class FinancialGoalController extends ApiController
