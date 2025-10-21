@@ -24,6 +24,7 @@ class FinancialGoalDataTable  extends DataTable
 
         return datatables()
             ->eloquent($query)
+            ->editColumn('status', fn($row) => __('financialgoal::attributes.financial-goals.status.' . $row->status))
             ->addColumn('totalAmount', fn($row) => $row->total_amount)
             ->addColumn('currency', fn($row) => $row->currency->symbol)
             ->addColumn('startDate', fn($row) => $row->start_date)
