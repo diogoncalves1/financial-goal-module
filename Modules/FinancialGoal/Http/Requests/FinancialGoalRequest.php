@@ -8,16 +8,18 @@ use Illuminate\Http\Exceptions\HttpResponseException;
 
 class FinancialGoalRequest extends FormRequest
 {
-
     /**
      * Get the validation rules that apply to the request.
      */
     public function rules(): array
     {
         return [
+            'name' => 'required|string|max:255',
             'total_amount' => 'required|numeric|min:0',
+            'currency_id' => 'required|exists:currencies,id',
             'start_date' => 'required|date',
             'due_date' => 'required|date',
+            'description' => 'nullable|string'
         ];
     }
 
@@ -34,7 +36,7 @@ class FinancialGoalRequest extends FormRequest
         throw new HttpResponseException(
             response()->json([
                 'success' => false,
-                'message' => 'Erro de validação',
+                'message' => 'Validation Error',
                 'errors'  => $validator->errors()
             ], 422)
         );

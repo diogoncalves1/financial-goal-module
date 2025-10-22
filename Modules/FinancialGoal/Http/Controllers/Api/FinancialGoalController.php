@@ -2,23 +2,17 @@
 
 namespace Modules\FinancialGoal\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\ApiController;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\JsonResource;
-use Modules\ApiResponder\Traits\RespondsWithApi;
+use Modules\FinancialGoal\DataTables\FinancialGoalDataTable;
 use Modules\FinancialGoal\Http\Requests\FinancialGoalRequest;
-use Modules\FinancialGoal\Http\Resources\ErrorResponseResource;
-use Modules\FinancialGoal\Http\Resources\FinancialGoalCollection;
 use Modules\FinancialGoal\Http\Resources\FinancialGoalResource;
-use Modules\FinancialGoal\Http\Resources\SuccessResponseResource;
 use Modules\FinancialGoal\Repositories\FinancialGoalRepository;
 
-class FinancialGoalController extends Controller
+class FinancialGoalController extends ApiController
 {
-    use RespondsWithApi;
-
     protected FinancialGoalRepository $repository;
 
     public function __construct(FinancialGoalRepository $repository)
@@ -29,17 +23,12 @@ class FinancialGoalController extends Controller
     /**
      * Display a listing of the resource.
      * @param Request $request
-     * @return JsonResource
+     * @param FinancialGoalDataTable $dataTable
+     * @return JsonResponse
      */
-    public function index(Request $request): JsonResource
+    public function index(Request $request, FinancialGoalDataTable $dataTable): JsonResponse
     {
-        try {
-            $financialGoals = $this->repository->allUser($request);
-
-            return new FinancialGoalCollection($financialGoals);
-        } catch (\Exception $e) {
-            return new ErrorResponseResource(['message' => $e->getMessage(), 'code' => $e->getCode()]);
-        }
+        return $dataTable->ajax();
     }
 
     /**
@@ -52,7 +41,7 @@ class FinancialGoalController extends Controller
         try {
             $financialGoal = $this->repository->store($request);
 
-            return $this->ok(new FinancialGoalResource($financialGoal), __('financialgoals::messages.financial-goals.store'));
+            return $this->ok(new FinancialGoalResource($financialGoal), __('financialgoal::messages.financial-goals.store', ['name' => $financialGoal->name]));
         } catch (\Exception $e) {
             return $this->fail($e->getMessage(), $e, $e->getCode());
         }
@@ -62,10 +51,9 @@ class FinancialGoalController extends Controller
      * Show the specified resource.
      * @param Request $request
      * @param string $id
-     * @return FinancialGoalResource
-     * @throws AuthorizationException
+     * @return JsonResponse
      */
-    public function show(Request $request, string $id): JsonResource
+    public function show(Request $request, string $id): JsonResponse
     {
         try {
             if (!$this->repository->hasPermission($request->user(), $id, 'viewFinancialGoal'))
@@ -73,9 +61,9 @@ class FinancialGoalController extends Controller
 
             $financialGoal = $this->repository->show($id);
 
-            return new FinancialGoalResource($financialGoal);
+            return $this->ok(new FinancialGoalResource($financialGoal));
         } catch (\Exception $e) {
-            return new ErrorResponseResource(['message' => $e->getMessage(), 'code' => $e->getCode()]);
+            return $this->fail($e->getMessage(), $e, $e->getCode());
         }
     }
 
@@ -83,10 +71,9 @@ class FinancialGoalController extends Controller
      * Update the specified resource in storage.
      * @param FinancialGoalRequest $request
      * @param string $id
-     * @return FinancialGoalResource
-     * @throws AuthorizationException
+     * @return JsonResponse
      */
-    public function update(Request $request, $id): JsonResource
+    public function update(FinancialGoalRequest $request, string $id): JsonResponse
     {
         try {
             if (!$this->repository->hasPermission($request->user(), $id, 'updateFinancialGoal'))
@@ -94,9 +81,9 @@ class FinancialGoalController extends Controller
 
             $financialGoal = $this->repository->update($request, $id);
 
-            return new FinancialGoalResource($financialGoal)->additional(['message' => __('')]);
+            return $this->ok(new FinancialGoalResource($financialGoal), __('financialgoal::messages.financial-goals.update', ['name' => $financialGoal->name]));
         } catch (\Exception $e) {
-            return new ErrorResponseResource(['message' => $e->getMessage(), 'code' => $e->getCode()]);
+            return $this->fail($e->getMessage(), $e, $e->getCode());
         }
     }
 
@@ -105,19 +92,18 @@ class FinancialGoalController extends Controller
      * @param Request $request
      * @param string $id
      * @return JsonResponse
-     * @throws AuthorizationException
      */
-    public function destroy(Request $request, string $id): JsonResource
+    public function destroy(Request $request, string $id): JsonResponse
     {
         try {
             if (!$this->repository->hasPermission($request->user(), $id, 'deleteFinancialGoal'))
                 throw new AuthorizationException(__('exceptions.denied'), 403);
 
-            $this->repository->destroy(id: $id);
+            $financialGoal = $this->repository->destroy(id: $id);
 
-            return new SuccessResponseResource(['message' => __('alerts.destroySuccess'), 'code' => 200]);
+            return $this->ok(message: __('financialgoal::messages.financial-goals.destroy', ['name' => $financialGoal->name]));
         } catch (\Exception $e) {
-            return new ErrorResponseResource(['message' => $e->getMessage(), 'code' => $e->getCode()]);
+            return $this->fail($e->getMessage(), $e, $e->getCode());
         }
     }
 }
