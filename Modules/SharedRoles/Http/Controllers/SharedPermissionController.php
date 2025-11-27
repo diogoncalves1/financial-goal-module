@@ -1,68 +1,111 @@
 <?php
-
 namespace Modules\SharedRoles\Http\Controllers;
 
-use Modules\SharedRoles\Enums\Language;
-use App\Http\Controllers\AppController;
+use App\Http\Controllers\ApiController;
+use Illuminate\Contracts\Support\Renderable;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Log;
+use Modules\SharedRoles\DataTables\SharedPermissionDataTable;
 use Modules\SharedRoles\Http\Requests\SharedPermissionRequest;
 use Modules\SharedRoles\Repositories\SharedPermissionRepository;
-use Illuminate\Support\Facades\Session;
 
-class SharedPermissionController extends AppController
+class SharedPermissionController extends ApiController
 {
-    private SharedPermissionRepository $sharedPermissionRepository;
+    private SharedPermissionRepository $repository;
 
-    public function __construct(SharedPermissionRepository $sharedPermissionRepository)
+    public function __construct(SharedPermissionRepository $repository)
     {
-        $this->sharedPermissionRepository = $sharedPermissionRepository;
+        $this->repository = $repository;
     }
 
-    public function index()
+    /**
+     * Display a listing of the resource.
+     *
+     * @param SharedRoleDataTable
+     * @throws AuthorizationException
+     */
+    public function index(SharedPermissionDataTable $dataTable)
     {
-        // $this->allowedAction('viewAdminSharedPermissions');
+        $this->allowedAction('viewSharedPermission');
 
-        Session::flash('page', 'shared permissions');
-
-        return view("sharedroles::shared-permissions.index");
+        return $dataTable->render("sharedroles::shared-permissions.index");
     }
 
-    public function create()
+    /**
+     * Show the form for create a new resource.
+     * @return Renderable
+     * @throws AuthorizationException
+     */
+    public function create(): Renderable
     {
-        // $this->allowedAction('addSharedPermissions');
+        $this->allowedAction('createSharedPermission');
 
-        Session::flash('page', 'shared permissions');
-
-        return view("sharedroles::shared-permissions.form");
+        return view("sharedroles::shared-permissions.create");
     }
 
-    public function store(SharedPermissionRequest $request)
+    /**
+     * Store a newly created resource in storage.
+     *
+     * @param SharedPermissionRequest $request
+     * @return RedirectResponse
+     * @throws AuthorizationException
+     */
+    public function store(SharedPermissionRequest $request): RedirectResponse
     {
-        // $this->allowedAction('addSharedPermissions');
+        $this->allowedAction('createSharedPermission');
 
-        $this->sharedPermissionRepository->store($request);
+        $this->repository->store($request);
 
         return redirect()->route('admin.shared-permissions.index');
     }
 
-    public function edit(string $id)
+    /**
+     * Show the form for edit a resource.
+     * @return Renderable
+     * @throws AuthorizationException
+     */
+    public function edit(string $id): Renderable
     {
-        // $this->allowedAction('editSharedPermissions');
+        $this->allowedAction('editSharedPermission');
 
-        Session::flash('page', 'shared permissions');
+        $sharedPermission = $this->repository->show($id);
 
-        $sharedPermission = $this->sharedPermissionRepository->show($id);
-
-        $languages = Language::cases();
-
-        return view("sharedroles::shared-permissions.form", compact('languages', 'sharedPermission'));
+        return view("sharedroles::shared-permissions.create", compact('sharedPermission'));
     }
 
-    public function update(SharedPermissionRequest $request, string $id)
+    /**
+     * Update the specified resource in storage.
+     * @param SharedPermissionRequest $request
+     * @param string $id
+     * @return RedirectResponse
+     * @throws AuthorizationException
+     */
+    public function update(SharedPermissionRequest $request, string $id): RedirectResponse
     {
-        // $this->allowedAction('editSharedPermissions');
+        $this->allowedAction('editSharedPermission');
 
-        $this->sharedPermissionRepository->update($request, $id);
+        $this->repository->update($request, $id);
 
         return redirect()->route('admin.shared-permissions.index');
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     * @param string $id
+     * @return JsonResponse
+     */
+    public function destroy(string $id): JsonResponse
+    {
+        try {
+            $this->allowedAction('destroySharedPermission');
+
+            $sharedPermission = $this->repository->destroy($id);
+
+            return $this->ok(message: "Permissão de partilha {$sharedPermission->name} apagada com sucesso!");
+        } catch (\Exception $e) {
+            Log::error($e);
+            return $this->fail('Erro ao tentar apagar permissão de partilha.', $e);
+        }
     }
 }
