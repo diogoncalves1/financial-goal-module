@@ -33,4 +33,12 @@ class RoleRequest extends FormRequest
 
         return $rules;
     }
+
+    public function messages(): array
+    {
+        return [
+            'code.required' => 'O código é obrigatório.',
+            'code.unique'   => 'Este código já existe.',
+        ];
+    }
 }

@@ -1,5 +1,4 @@
 <?php
-
 namespace Modules\FinancialGoal\Database\Factories;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -18,21 +17,23 @@ class FinancialGoalFactory extends Factory
      */
     public function definition(): array
     {
-        $totalAmount = $this->faker->randomFloat(2);
+        $totalAmount       = $this->faker->randomFloat(2);
         $contributedAmount = $this->faker->randomFloat(2, 0, $totalAmount);
-        $dueDate = $this->faker->date();
-        $status = $contributedAmount == $totalAmount ? 'completed' : $this->faker->randomElement(['in_progress', 'canceled']);
+        $dueDate           = $this->faker->date();
+        $status            = $contributedAmount == $totalAmount ? 'completed' : $this->faker->randomElement(['in_progress', 'canceled']);
 
         return [
-            'currency_id' => Currency::pluck('id')->random(),
-            'name' => $this->faker->word(),
-            'total_amount' => $totalAmount,
+            'currency_id'        => Currency::pluck('id')->random(),
+            'name'               => $this->faker->word(),
+            'total_amount'       => $totalAmount,
             'contributed_amount' => $contributedAmount,
-            'start_date' => $this->faker->date(max: $dueDate),
-            'due_date' => $dueDate,
-            'status' => $status,
-            'description' => $this->faker->sentence(),
-            'completed_at' => $status == 'completed' ? $this->faker->date(max: $dueDate) : null
+            'start_date'         => $this->faker->date(max: $dueDate),
+            'due_date'           => $dueDate,
+            'status'             => $status,
+            'description'        => $this->faker->sentence(),
+            'completed_at'       => $status == 'completed' ? $this->faker->date(max : $dueDate): null,
+            'priority'           => $this->faker->randomElement(['low', 'medium', 'high']),
+            'canceled_at'        => $status == 'canceled' ? $this->faker->date(max : $dueDate): null,
         ];
     }
 }

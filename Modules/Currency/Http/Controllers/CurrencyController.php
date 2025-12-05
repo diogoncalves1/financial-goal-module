@@ -1,55 +1,61 @@
 <?php
-
 namespace Modules\Currency\Http\Controllers;
 
-use Modules\Currency\Enums\Language;
-use Modules\Currency\Repositories\CurrencyRepository;
-use Illuminate\Support\Facades\Session;
 use App\Http\Controllers\AppController;
+use Illuminate\Contracts\Support\Renderable;
+use Modules\Currency\DataTables\CurrencyDataTable;
+use Modules\Currency\Repositories\CurrencyRepository;
+use Modules\Language\Repositories\LanguageRepository;
 
 class CurrencyController extends AppController
 {
-    private CurrencyRepository $currencyRepository;
+    private CurrencyRepository $repository;
+    private LanguageRepository $languageRepository;
 
-    public function __construct(CurrencyRepository $currencyRepository)
+    public function __construct(CurrencyRepository $repository, LanguageRepository $languageRepository)
     {
-        $this->currencyRepository = $currencyRepository;
+        $this->repository         = $repository;
+        $this->languageRepository = $languageRepository;
     }
 
-    public function index()
+    /**
+     * Display a listing of the resource.
+     * @throws AuthenticationException
+     */
+    public function index(CurrencyDataTable $dataTable)
     {
-        // $this->allowedAction('getCurrencies');
+        $this->allowedAction('viewCurrency');
 
-        Session::flash('page', 'currencies');
-
-        return view('currency::currencies.index');
+        return $dataTable->render('currency::index');
     }
 
-    public function create()
+    /**
+     * Show the form for create a new resource.
+     * @return Renderable
+     * @throws AuthorizationException
+     */
+    public function create(): Renderable
     {
-        // $this->allowedAction('getCurrencies');
+        $this->allowedAction('createCurrency');
 
-        Session::flash('page', 'currencies');
+        $languages = $this->languageRepository->all();
 
-        $languages = Language::cases();
-
-        return view('currency::currencies.form', compact('languages'));
+        return view('currency::create', compact('languages'));
     }
 
-    // public function show(string $id)
-    // {
-    //     // $this->allowedAction('getCurrencies');
-    // }
-
-    public function edit(string $id)
+    /**
+     * Show the form for editing the specified resource.
+     * @param string $id
+     * @return Renderable
+     * @throws AuthorizationException
+     */
+    public function edit(string $id): Renderable
     {
-        // $this->allowedAction('getCurrencies');
+        $this->allowedAction('editCurrency');
 
-        Session::flash('page', 'currencies');
+        $currency  = $this->repository->show($id);
+        $languages = $this->languageRepository->all();
 
-        $currency = $this->currencyRepository->show($id);
-        $languages = Language::cases();
-
-        return view('currency::currencies.form', compact('currency', 'languages'));
+        return view('currency::create', compact('currency', 'languages'));
     }
 }
