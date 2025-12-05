@@ -1,9 +1,10 @@
 <?php
-
 namespace Modules\FinancialGoal\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Modules\SharedRoles\Http\Resources\SharedRoleResource;
+use Modules\User\Http\Resources\UserShareResource;
 
 class FinancialGoalUserResource extends JsonResource
 {
@@ -12,6 +13,11 @@ class FinancialGoalUserResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        return parent::toArray($request);
+        return [
+            'sharedRole'    => new SharedRoleResource($this->sharedRole),
+            'financialGoal' => new FinancialGoalResource($this->financialGoal),
+            'user'          => new UserShareResource($this->user),
+            'createdAt'     => $this->created_at,
+        ];
     }
 }

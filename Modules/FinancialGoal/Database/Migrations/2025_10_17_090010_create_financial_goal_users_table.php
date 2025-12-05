@@ -13,32 +13,28 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('financial_goal_users', function (Blueprint $table) {
+            $table->id();
             $table->unsignedBigInteger('financial_goal_id');
             $table->unsignedBigInteger('user_id');
             $table->unsignedBigInteger('shared_role_id')->nullable();
-
-            $table->enum('status', ['pending', 'accepted', 'revoked'])->default('pending');
-
-            $table->timestamp('invited_at')->nullable()->useCurrent();
-            $table->timestamp('accepted_at')->nullable();
 
             $table->timestamps();
 
             $table->foreign('financial_goal_id')->references('id')->on('financial_goals')->onDelete('cascade');
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
             $table->foreign('shared_role_id')->references('id')->on('shared_roles')->onDelete('set null');
-
-            $permissions = [
-                ['name' => 'Gerir Utilizadores da Meta Financeira', 'code' => 'manageFinancialGoalUsers', 'category' => 'Contribuicoes Metas Financeiras'],
-            ];
-
-            foreach ($permissions as $permission) {
-                $id = DB::table('shared_permissions')->insertGetId($permission);
-                $permissionRole[] = ['shared_permission_id' => $id, 'shared_role_id' => 1];
-            }
-
-            DB::table('shared_permission_roles')->insert($permissionRole);
         });
+
+        $permissions = [
+            ['name' => 'Gerir Utilizadores da Meta Financeira', 'code' => 'manageFinancialGoalUsers', 'category' => 'Contribuicoes Metas Financeiras'],
+        ];
+
+        foreach ($permissions as $permission) {
+            $id               = DB::table('shared_permissions')->insertGetId($permission);
+            $permissionRole[] = ['shared_permission_id' => $id, 'shared_role_id' => 1];
+        }
+
+        DB::table('shared_permission_roles')->insert($permissionRole);
     }
 
     /**

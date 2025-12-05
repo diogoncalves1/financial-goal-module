@@ -1,20 +1,13 @@
 <?php
-
 namespace Modules\FinancialGoal\DataTables;
 
-use Modules\FinancialGoal\Entities\FinancialGoal;
-use Modules\FinancialGoal\Repositories\FinancialGoalRepository;
-use Modules\User\Entities\User;
+use Modules\Accounts\Core\Helpers;
+use Modules\FinancialGoal\Core\Helpers as CoreHelpers;
+use Modules\FinancialGoal\Entities\FinancialGoalView;
 use Yajra\DataTables\Services\DataTable;
 
-class FinancialGoalDataTable  extends DataTable
+class FinancialGoalDataTable extends DataTable
 {
-    protected $repository;
-
-    public function __construct(FinancialGoalRepository $repository)
-    {
-        $this->repository = $repository;
-    }
 
     public function dataTable($query)
     {
@@ -24,38 +17,47 @@ class FinancialGoalDataTable  extends DataTable
 
         return datatables()
             ->eloquent($query)
-            ->editColumn('status', fn($row) => __('financialgoal::attributes.financial-goals.status.' . $row->status))
-            ->addColumn('totalAmount', fn($row) => $row->total_amount)
-            ->addColumn('currency', fn($row) => $row->currency->symbol)
-            ->addColumn('startDate', fn($row) => $row->start_date)
-            ->addColumn('dueDate', fn($row) => $row->due_date)
-            ->addColumn('completedAt', fn($row) => $row->completed_at)
-            ->addColumn('contributedAmount', fn($row) => $row->contributed_at)
-            ->addColumn('actions', function ($row) use ($user) {
+            ->addColumn('totalAmountFormated', fn(FinancialGoalView $financialGoal) => Helpers::formatMoneyWithSymbolAndCurrency($financialGoal->totalAmount, $financialGoal->currencyCode, $financialGoal->currencySymbol))
+            ->addColumn('contributedAmountFormated', fn(FinancialGoalView $financialGoal) => Helpers::formatMoneyWithSymbolAndCurrency($financialGoal->contributedAmount, $financialGoal->currencyCode, $financialGoal->currencySymbol))
+            ->addColumn('percentageCompeted', fn(FinancialGoalView $financialGoal) => CoreHelpers::percentage($financialGoal->totalAmount, $financialGoal->contributedAmount))
+            ->addColumn('priorityTranslated', fn(FinancialGoalView $financialGoal) => __('financialgoal::attributes.financial-goals.priority.' . $financialGoal->priority))
+            ->addColumn('statusTranslated', fn(FinancialGoalView $financialGoal) => __('financialgoal::attributes.financial-goals.status.' . $financialGoal->status))
+            ->addColumn('actions', function (FinancialGoalView $financialGoal) use ($user) {
+                $sharedRole = $financialGoal->userSharedRole($financialGoal, $user->id);
 
-                $canEdit = $this->repository->hasPermission($user, $row->id, 'updateFinancialGoal');
-                $canDestroy = $this->repository->hasPermission($user, $row->id, 'destroyFinancialGoal');
+                $canEdit    = $sharedRole->hasPermission('updateFinancialGoal');
+                $canDestroy = $sharedRole->hasPermission('destroyFinancialGoal');
 
                 return ['edit' => $canEdit, 'destroy' => $canDestroy];
             })
-            ->removeColumn('total_amount')
-            ->removeColumn('currency_id')
-            ->removeColumn('start_date')
-            ->removeColumn('completed_at')
-            ->removeColumn('due_date')
-            ->removeColumn('contributed_amount');
+            ->removeColumn('userIds')
+            ->removeColumn('currencyId')
+            ->removeColumn('currencyCode')
+            ->removeColumn('canceledAt')
+            ->removeColumn('completedAt');
+
     }
 
-    public function query(FinancialGoal $model)
+    public function query(FinancialGoalView $model)
     {
         $request = request();
 
         $user = $request->user();
 
-        return $model->newQuery()->select('financial_goals.*')
-            ->join('financial_goal_users', 'financial_goals.id', '=', 'financial_goal_users.financial_goal_id')
-            ->join('shared_roles', 'financial_goal_users.shared_role_id', '=', 'shared_roles.id')
-            ->where('financial_goal_users.status', 'accepted')
-            ->where('financial_goal_users.user_id', $user->id);
+        $query = $model->newQuery()
+            ->whereRaw("FIND_IN_SET(?, REPLACE(userIds, ' ', ''))", [$user->id]);
+
+        if ($request->has('status')) {
+            $query->active($request->get('status'));
+        }
+
+        if ($search = $request->get('search')) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere("totalAmount", 'like', "%{$search}%");
+            });
+        }
+
+        return $query;
     }
 }

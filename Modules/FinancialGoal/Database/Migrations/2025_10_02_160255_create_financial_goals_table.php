@@ -20,26 +20,28 @@ return new class extends Migration
             $table->decimal('contributed_amount', 15)->default(0);
             $table->date('start_date');
             $table->date('due_date');
-            $table->enum('status', ['paid', 'in_progress', 'canceled'])->default('in_progress');
+            $table->enum('status', ['completed', 'in_progress', 'canceled'])->default('in_progress');
             $table->text('description')->nullable();
             $table->timestamp('completed_at')->nullable();
+            $table->enum('priority', ['low', 'medium', 'high'])->nullable();
+            $table->timestamp('canceled_at')->nullable();
             $table->timestamps();
 
             $table->foreign('currency_id')->references('id')->on('currencies')->onDelete('set null');
-
-            $permissions = [
-                ['name' => 'Ver Meta Financeira', 'code' => 'viewFinancialGoal', 'category' => 'Metas Financeiras'],
-                ['name' => 'Editar Meta Financeira', 'code' => 'updateFinancialGoal', 'category' => 'Metas Financeiras'],
-                ['name' => 'Apagar Meta Financeira', 'code' => 'destroyFinancialGoal', 'category' => 'Metas Financeiras'],
-            ];
-
-            foreach ($permissions as $permission) {
-                $id = DB::table('shared_permissions')->insertGetId($permission);
-                $permissionRole[] = ['shared_permission_id' => $id, 'shared_role_id' => 1];
-            }
-
-            DB::table('shared_permission_roles')->insert($permissionRole);
         });
+
+        $permissions = [
+            ['name' => 'Ver Meta Financeira', 'code' => 'viewFinancialGoal', 'category' => 'Metas Financeiras'],
+            ['name' => 'Editar Meta Financeira', 'code' => 'updateFinancialGoal', 'category' => 'Metas Financeiras'],
+            ['name' => 'Apagar Meta Financeira', 'code' => 'destroyFinancialGoal', 'category' => 'Metas Financeiras'],
+        ];
+
+        foreach ($permissions as $permission) {
+            $id               = DB::table('shared_permissions')->insertGetId($permission);
+            $permissionRole[] = ['shared_permission_id' => $id, 'shared_role_id' => 1];
+        }
+
+        DB::table('shared_permission_roles')->insert($permissionRole);
     }
 
     /**

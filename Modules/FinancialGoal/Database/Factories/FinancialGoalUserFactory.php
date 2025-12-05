@@ -1,5 +1,4 @@
 <?php
-
 namespace Modules\FinancialGoal\Database\Factories;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -20,15 +19,10 @@ class FinancialGoalUserFactory extends Factory
      */
     public function definition(): array
     {
-        $status = $this->faker->randomElement(['pending', 'accepted', 'revoked']);
-
         return [
             'financial_goal_id' => FinancialGoal::pluck('id')->random(),
-            'user_id' => User::pluck('id')->random(),
-            'shared_role_id' => SharedRole::pluck('id')->random(),
-            'status' => $status,
-            'invited_at' => $this->faker->date(),
-            'accepted_at' => $status == 'accepted' ? $this->faker->date() : null
+            'user_id'           => User::pluck('id')->random(),
+            'shared_role_id'    => SharedRole::pluck('id')->random(),
         ];
     }
 }

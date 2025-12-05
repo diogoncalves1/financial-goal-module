@@ -1,5 +1,4 @@
 <?php
-
 namespace Modules\FinancialGoal\Database\Seeders;
 
 use Illuminate\Database\Seeder;
@@ -14,7 +13,8 @@ class FinancialGoalDatabaseSeeder extends Seeder
         $this->call([
             FinancialGoalSeeder::class,
             FinancialGoalUserSeeder::class,
-            FinancialGoalContributionSeeder::class,
+            FinancialGoalTransactionSeeder::class,
+            FinancialGoalUserInviteSeeder::class,
         ]);
     }
 }
