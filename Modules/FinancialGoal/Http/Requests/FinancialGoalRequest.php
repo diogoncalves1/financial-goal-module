@@ -1,5 +1,4 @@
 <?php
-
 namespace Modules\FinancialGoal\Http\Requests;
 
 use Illuminate\Contracts\Validation\Validator;
@@ -14,12 +13,13 @@ class FinancialGoalRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => 'required|string|max:255',
-            'total_amount' => 'required|numeric|min:0',
-            'currency_id' => 'required|exists:currencies,id',
-            'start_date' => 'required|date',
-            'due_date' => 'required|date',
-            'description' => 'nullable|string'
+            'name'         => 'required|string|max:255',
+            'total_amount' => 'required|numeric|min:0.01',
+            'currency_id'  => 'required|exists:currencies,id',
+            'start_date'   => 'required|date',
+            'due_date'     => 'required|date|after_or_equal:start_date',
+            'description'  => 'nullable|string',
+            'priority'     => 'nullable|string|in:low,medium,high',
         ];
     }
 
@@ -37,7 +37,7 @@ class FinancialGoalRequest extends FormRequest
             response()->json([
                 'success' => false,
                 'message' => 'Validation Error',
-                'errors'  => $validator->errors()
+                'errors'  => $validator->errors(),
             ], 422)
         );
     }

@@ -1,5 +1,4 @@
 <?php
-
 namespace Modules\FinancialGoal\Http\Resources;
 
 use Illuminate\Http\Request;
@@ -10,8 +9,8 @@ class FinancialGoalCollection extends ResourceCollection
     /**
      * Transform the resource collection into an array.
      */
-    public function toArray(Request $request): array
+    public function toArray(Request $request)
     {
-        return parent::toArray($request);
+        return FinancialGoalResource::collection($this->collection);
     }
 }

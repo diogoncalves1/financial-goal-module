@@ -1,17 +1,20 @@
 <?php
-
 namespace Modules\FinancialGoal\Repositories;
 
 use App\Repositories\RepositoryApiInterface;
-use Carbon\Carbon;
-use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Modules\FinancialGoal\Entities\FinancialGoal;
+use Modules\FinancialGoal\Entities\FinancialGoalTransaction;
 use Modules\FinancialGoal\Entities\FinancialGoalUser;
+use Modules\FinancialGoal\Entities\FinancialGoalView;
+use Modules\FinancialGoal\Exceptions\FinancialGoal\FinancialGoalInProgressException;
+use Modules\FinancialGoal\Exceptions\FinancialGoal\FinancialGoalNotFullyFundedException;
+use Modules\FinancialGoal\Exceptions\FinancialGoal\FinancialGoalNotInProgressException;
+use Modules\FinancialGoal\Exceptions\FinancialGoal\UnauthorizedUpdateFinancialGoal;
+use Modules\FinancialGoal\Exceptions\FinancialGoal\UnauthorizedViewFinancialGoal;
 use Modules\SharedRoles\Entities\SharedRole;
 use Modules\SharedRoles\Repositories\SharedRoleRepository;
-use Modules\User\Entities\User;
 
 class FinancialGoalRepository implements RepositoryApiInterface
 {
@@ -27,23 +30,19 @@ class FinancialGoalRepository implements RepositoryApiInterface
         return FinancialGoal::all();
     }
 
-    public function allUser(Request $request) {}
-
     public function store(Request $request)
     {
         return DB::transaction(function () use ($request) {
-            // $user = $request->user();
+            $user = $request->user();
 
-            $input = $request->all();
+            $input = $request->only(['name', 'total_amount', 'currency_id', 'start_date', 'due_date', 'description', 'priority']);
 
             $financialGoal = FinancialGoal::create($input);
 
             $inputUser = [
-                'user_id' => 2, //$user->id,
+                'user_id'           => $user->id,
                 'financial_goal_id' => $financialGoal->id,
-                'shared_role_id' => SharedRole::where('code', 'creator')->first()->id,
-                'status' => 'accepted',
-                'accepted_at' => Carbon::now()
+                'shared_role_id'    => SharedRole::where('code', 'creator')->first()->id,
             ];
 
             FinancialGoalUser::create($inputUser);
@@ -52,32 +51,133 @@ class FinancialGoalRepository implements RepositoryApiInterface
         });
     }
 
-    public function update(Request $request, string $id)
+    public function showToUser(Request $request, string $id)
     {
-        try {
-            return DB::transaction(function () use ($request, $id) {
-                $financialGoal = $this->show($id);
+        $user = $request->user();
 
-                $input = $request->all();
+        $financialGoal = $this->show($id);
 
-                $financialGoal->update($input);
+        $sharedRole = $financialGoal->userSharedRole($financialGoal, $user->id);
 
-                return $financialGoal;
-            });
-        } catch (\Exception $e) {
-            throw new $e;
+        if (! $sharedRole || ! $sharedRole->hasPermission('viewFinancialGoal')) {
+            throw new UnauthorizedViewFinancialGoal();
         }
+
+        $financialGoalView = $this->showView($id);
+
+        return $financialGoalView;
     }
 
-    public function destroy(?Request $request = null, string $id)
+    public function update(Request $request, string $id)
     {
-        try {
-            DB::transaction(function () use ($id) {
-                $financialGoal = $this->show($id);
-            });
-        } catch (\Exception $e) {
-            throw new $e;
-        }
+        return DB::transaction(function () use ($request, $id) {
+            $user = $request->user();
+
+            $financialGoal = $this->show($id);
+
+            $input = $request->only(['name', 'total_amount', 'currency_id', 'start_date', 'due_date', 'description', 'priority']);
+
+            $sharedRole = $financialGoal->userSharedRole($financialGoal, $user->id);
+
+            if (! $sharedRole || ! $sharedRole->hasPermission('updateFinancialGoal')) {
+                throw new UnauthorizedUpdateFinancialGoal();
+            }
+            // TODO: Criar uma notificacao no frontend
+            // if ($request->get('total_amount') < $financialGoal->contributed_amount) {
+            // }
+
+            $financialGoal->update($input);
+
+            return $financialGoal;
+        });
+    }
+
+    public function destroy(Request $request, string $id, )
+    {
+        return DB::transaction(function () use ($request, $id) {
+            $user = $request->user();
+
+            $financialGoal = $this->show($id);
+
+            $sharedRole = $financialGoal->userSharedRole($financialGoal, $user->id);
+
+            if (! $sharedRole || ! $sharedRole->hasPermission('destroyFinancialGoal')) {
+                throw new UnauthorizedUpdateFinancialGoal();
+            }
+
+            $financialGoal->delete();
+
+            return $financialGoal;
+        });
+    }
+
+    public function cancel(Request $request, string $id)
+    {
+        return DB::transaction(function () use ($request, $id) {
+            $user = $request->user();
+
+            $financialGoal = $this->show($id);
+
+            $sharedRole = $financialGoal->userSharedRole($financialGoal, $user->id);
+
+            if (! $sharedRole || ! $sharedRole->hasPermission('updateFinancialGoal')) {
+                throw new UnauthorizedUpdateFinancialGoal();
+            }
+            if ($financialGoal->status !== 'in_progress') {
+                throw new FinancialGoalNotInProgressException();
+            }
+
+            $this->setStatus($financialGoal, 'canceled');
+
+            return $financialGoal;
+        });
+    }
+
+    public function complete(Request $request, string $id)
+    {
+        return DB::transaction(function () use ($request, $id) {
+            $user = $request->user();
+
+            $financialGoal = $this->show($id);
+
+            $sharedRole = $financialGoal->userSharedRole($financialGoal, $user->id);
+
+            if (! $sharedRole || ! $sharedRole->hasPermission('updateFinancialGoal')) {
+                throw new UnauthorizedUpdateFinancialGoal();
+            }
+            if ($financialGoal->status !== 'in_progress') {
+                throw new FinancialGoalNotInProgressException();
+            }
+            if ($financialGoal->contributed_amount < $financialGoal->total_amount) {
+                throw new FinancialGoalNotFullyFundedException();
+            }
+
+            $this->setStatus($financialGoal, 'completed');
+
+            return $financialGoal;
+        });
+    }
+
+    public function reset(Request $request, string $id)
+    {
+        return DB::transaction(function () use ($request, $id) {
+            $user = $request->user();
+
+            $financialGoal = $this->show($id);
+
+            $sharedRole = $financialGoal->userSharedRole($financialGoal, $user->id);
+
+            if (! $sharedRole || ! $sharedRole->hasPermission('updateFinancialGoal')) {
+                throw new UnauthorizedUpdateFinancialGoal();
+            }
+            if ($financialGoal->status == 'in_progress') {
+                throw new FinancialGoalInProgressException();
+            }
+
+            $this->setStatus($financialGoal, 'in_progress');
+
+            return $financialGoal;
+        });
     }
 
     public function show(string $id)
@@ -85,31 +185,47 @@ class FinancialGoalRepository implements RepositoryApiInterface
         return FinancialGoal::findOrFail($id);
     }
 
-    public function userSharedRole(FinancialGoal $financialGoal, string $userId)
+    // Extra methods
+    public function adjustContributedAmount(FinancialGoalTransaction $transaction): void
     {
-        $user = $financialGoal->users()
-            ->where('user_id', $userId)
-            ->where('status', 'accepted')
-            ->join('shared_roles', 'financial_goal_users.shared_role_id', '=', 'shared_roles.id')
-            ->first();
+        $financialGoal = $transaction->financialGoal;
 
-        if ($user)
-            return $this->sharedRoleRepository->show($user?->pivot->shared_role_id);
-        return null;
+        $financialGoal->contributed_amount += $transaction->type == 'contribution' ? $transaction->amount : -$transaction->amount;
+
+        $financialGoal->save();
+    }
+    public function updateContributedAmount(FinancialGoalTransaction $transaction, float $difference): void
+    {
+        $financialGoal = $transaction->financialGoal;
+
+        $financialGoal->contributed_amount -= $transaction->type == 'contribution' ? $difference : -$difference;
+
+        $financialGoal->save();
+    }
+    public function reverseContributedAmount(FinancialGoalTransaction $transaction): void
+    {
+        $financialGoal = $transaction->financialGoal;
+
+        $financialGoal->contributed_amount -= $transaction->type == 'contribution' ? $transaction->amount : -$transaction->amount;
+
+        $financialGoal->save();
     }
 
-    public function hasPermission(User $user, string $id, string $permission)
+    // Private methods
+    private function showView(string $id)
     {
-        $financialGoal = $this->show($id);
+        $view = FinancialGoalView::where('id', $id)->first();
 
-        $userFG = $financialGoal->users()
-            ->where('user_id', $user->id)
-            ->where('status', 'accepted')
-            ->join('shared_roles', 'financial_goal_users.shared_role_id', '=', 'shared_roles.id')
-            ->first();
+        if (! $view) {
+            abort(404);
+        }
 
-        if ($userFG)
-            return $this->sharedRoleRepository->show($userFG?->pivot->shared_role_id)->hasPermission($permission);
-        return null;
+        return $view;
+    }
+    private function setStatus(FinancialGoal $financialGoal, string $status)
+    {
+        $financialGoal->status = $status;
+
+        $financialGoal->save();
     }
 }
