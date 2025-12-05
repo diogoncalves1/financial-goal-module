@@ -4,6 +4,7 @@ namespace Modules\Accounts\DataTables;
 use Modules\Accounts\Core\Helpers;
 use Modules\Accounts\Entities\AccountsView;
 use Modules\Accounts\Repositories\AccountRepository;
+use Modules\User\Http\Resources\UserCollection;
 use Yajra\DataTables\Services\DataTable;
 
 class AccountDataTable extends DataTable
@@ -26,6 +27,7 @@ class AccountDataTable extends DataTable
             ->addColumn('typeTranslated', fn(AccountsView $account) => __('accounts::attributes.accounts.type.' . $account->type))
             ->addColumn('balanceFormated', fn(AccountsView $account) => Helpers::formatMoneyWithSymbolAndCurrency($account->balance, $account->currencyCode, $account->currencySymbol))
             ->addColumn('statusTranslated', fn(AccountsView $account) => __("accounts::attributes.accounts.status." . ($account->status ? 'active' : 'disabled')))
+            ->addColumn('users', fn(AccountsView $account) => new UserCollection($account->users))
             ->addColumn('actions', function (AccountsView $account) use ($user) {
                 $account    = $this->repository->show($account->id);
                 $sharedRole = $account->userSharedRole($account, $user->id);
