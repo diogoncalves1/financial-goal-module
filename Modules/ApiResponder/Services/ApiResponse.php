@@ -6,23 +6,31 @@ use Illuminate\Http\JsonResponse;
 
 class ApiResponse
 {
-    public static function success($data = null, string $message = '', int $code = 200): JsonResponse
+    public static function success($data = null, string $message = '', int $code = 200, ?array $additionals = null): JsonResponse
     {
-        return response()->json([
+        $data = [
             'success' => true,
             'message' => $message,
             'data' => $data,
             'errors' => null
-        ], $code);
+        ];
+
+        if ($additionals !== null) $data['additionals'] = $additionals;
+
+        return response()->json($data, $code);
     }
 
-    public static function error(string $message, $errors = null, int $code = 400): JsonResponse
+    public static function error(string $message, $errors = null, int $code = 400, ?array $additionals = null): JsonResponse
     {
-        return response()->json([
+        $data = [
             'success' => false,
             'message' => $message,
             'data' => null,
             'errors' => $errors
-        ], $code);
+        ];
+
+        if ($additionals !== null) $data['additionals'] = $additionals;
+
+        return response()->json($data, $code);
     }
 }

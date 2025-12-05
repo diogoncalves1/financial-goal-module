@@ -1,14 +1,14 @@
 <?php
-
 namespace App\Http\Controllers;
 
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\Gate;
 
 class AppController
 {
-    protected function allowedAction($permission): void
+    protected function allowedAction($permission)
     {
-        if (auth()->user()->hasPermission($permission)) {
+        if (Gate::denies('authorization', $permission)) {
             throw new AuthorizationException('This action is unauthorized');
         }
     }
